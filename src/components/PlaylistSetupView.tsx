@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import type { Track } from "../types/game";
 import { searchSongs, PRESET_PLAYLISTS } from "../services/itunesApi";
-import { getAvatar } from "../utils/avatars";
 
 interface PlaylistSetupViewProps {
   hostName: string;
@@ -28,21 +27,22 @@ interface PlaylistSetupViewProps {
 }
 
 export const PlaylistSetupView: React.FC<PlaylistSetupViewProps> = ({
-  hostName,
-  hostAvatar,
+  hostName: _hostName,
+  hostAvatar: _hostAvatar,
   initialPlaylist,
   initialSettings,
   onConfirm,
   onBack,
 }) => {
   const [playlist, setPlaylist] = useState<Track[]>(
-    initialPlaylist && initialPlaylist.length > 0 ? initialPlaylist : PRESET_PLAYLISTS[0].tracks
+    initialPlaylist && initialPlaylist.length > 0 ? initialPlaylist : []
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+
 
   // Settings
   const [penaltyOnFail, setPenaltyOnFail] = useState(initialSettings?.penaltyOnFail ?? false);
@@ -366,100 +366,82 @@ export const PlaylistSetupView: React.FC<PlaylistSetupViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Summary & Host Profile (Matches Screenshot 2) */}
-        <div className="space-y-6">
-          <div className="glass-panel rounded-3xl p-6 md:p-7 border border-white/10 shadow-xl flex flex-col justify-between h-full">
-            <div className="space-y-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Resumen</h3>
+        {/* Right Column: Summary & Next Action Button (Always in view) */}
+        <div className="space-y-6 lg:sticky lg:top-8">
+          <div className="glass-panel rounded-3xl p-6 md:p-7 border border-white/10 shadow-xl space-y-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Resumen</h3>
 
-              <div className="space-y-3.5 text-sm">
-                <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <span className="text-gray-400 text-xs">Modo</span>
-                  <span className="font-bold text-fuchsia-400 text-xs">En una Nota</span>
-                </div>
-                <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <span className="text-gray-400 text-xs">Playlist</span>
-                  <span className="font-semibold text-white text-xs">
-                    {playlist.length > 0 ? `${playlist.length} canciones` : "Sin definir"}
-                  </span>
-                </div>
-                <div className="space-y-2 pb-2 border-b border-white/5">
-                  <span className="text-gray-400 text-xs block">Ajustes de sala</span>
-                  
-                  {/* Toggle Penalty */}
-                  <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-xs text-gray-200">Penalización (-1 pt)</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={penaltyOnFail}
-                      onChange={(e) => setPenaltyOnFail(e.target.checked)}
-                      className="rounded accent-fuchsia-500 w-4 h-4 cursor-pointer"
-                    />
-                  </label>
-
-                  {/* Response Timer Select */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-fuchsia-400" />
-                      <span className="text-xs text-gray-200">Timer de respuesta</span>
-                    </div>
-                    <select
-                      value={responseTimeLimit}
-                      onChange={(e) => setResponseTimeLimit(Number(e.target.value))}
-                      className="bg-[#191724] text-xs text-fuchsia-300 font-bold px-2 py-1 rounded-lg border border-white/10 focus:outline-none cursor-pointer"
-                    >
-                      <option value={15}>15 seg</option>
-                      <option value={20}>20 seg</option>
-                      <option value={25}>25 seg</option>
-                      <option value={30}>30 seg</option>
-                    </select>
-                  </div>
-                </div>
+            <div className="space-y-3.5 text-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <span className="text-gray-400 text-xs">Modo</span>
+                <span className="font-bold text-fuchsia-400 text-xs">En una Nota</span>
               </div>
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <span className="text-gray-400 text-xs">Playlist</span>
+                <span className="font-semibold text-white text-xs">
+                  {playlist.length > 0 ? `${playlist.length} canciones` : "Vacía (sin canciones)"}
+                </span>
+              </div>
+              <div className="space-y-2 pb-2 border-b border-white/5">
+                <span className="text-gray-400 text-xs block">Ajustes de sala</span>
 
-              {/* Host Profile Box */}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-                  Tu nombre de Host
-                </p>
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#181622] border border-white/10">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getAvatar(hostAvatar).bg} flex items-center justify-center text-lg shadow-md shrink-0`}>
-                    {getAvatar(hostAvatar).emoji}
+                {/* Toggle Penalty */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs text-gray-200">Penalización (-1 pt)</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">
-                      {hostName || "Host"}
-                    </p>
-                    <span className="text-[10px] text-fuchsia-400 font-medium block">Director de Sala</span>
+                  <input
+                    type="checkbox"
+                    checked={penaltyOnFail}
+                    onChange={(e) => setPenaltyOnFail(e.target.checked)}
+                    className="rounded accent-fuchsia-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+
+                {/* Response Timer Select */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-fuchsia-400" />
+                    <span className="text-xs text-gray-200">Timer de respuesta</span>
                   </div>
+                  <select
+                    value={responseTimeLimit}
+                    onChange={(e) => setResponseTimeLimit(Number(e.target.value))}
+                    className="bg-[#191724] text-xs text-fuchsia-300 font-bold px-2 py-1 rounded-lg border border-white/10 focus:outline-none cursor-pointer"
+                  >
+                    <option value={15}>15 seg</option>
+                    <option value={20}>20 seg</option>
+                    <option value={25}>25 seg</option>
+                    <option value={30}>30 seg</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            {/* Next Button and Cancel */}
-            <div className="pt-6 space-y-2">
+            {/* Next Button directly here in place of the host card */}
+            <div className="pt-2 space-y-2.5">
               <button
                 type="button"
                 onClick={handleNext}
                 disabled={playlist.length === 0}
-                className="btn-primary w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-fuchsia-500/20"
+                className="btn-primary w-full py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-fuchsia-500/20"
               >
                 <span>Siguiente</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 type="button"
                 onClick={onBack}
-                className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-300 flex items-center justify-center gap-1 transition"
+                className="w-full py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-300 flex items-center justify-center gap-1 transition"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Cancelar y volver</span>
               </button>
               {playlist.length === 0 && (
-                <p className="text-center text-xs text-gray-500">Agregá al menos una canción</p>
+                <p className="text-center text-xs text-gray-500">
+                  Agregá canciones o cargá una playlist guardada
+                </p>
               )}
             </div>
           </div>

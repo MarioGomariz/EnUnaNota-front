@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Plus, Music2, User, Sparkles } from "lucide-react";
+import { ArrowRight, Plus, Music2, User } from "lucide-react";
 import { AVATARS } from "../utils/avatars";
 import type { AvatarOption } from "../utils/avatars";
 
@@ -59,52 +59,26 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
 
       {/* Main Brand Header */}
       <div className="text-center mb-6 sm:mb-8 z-10 px-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/5 border border-white/10 text-fuchsia-400 text-[11px] sm:text-xs font-semibold mb-3 tracking-wide uppercase">
-          <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
-          Inspirado en el juego de Olga
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white flex items-center justify-center gap-2.5 sm:gap-3">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white flex items-center justify-center gap-2.5 sm:gap-3">
           <span>En una Nota</span>
-          <Music2 className="w-7 h-7 sm:w-8 sm:h-8 text-fuchsia-500 animate-pulse" />
+          <Music2 className="w-8 h-8 sm:w-10 sm:h-10 text-fuchsia-500 animate-pulse" />
         </h1>
-        <p className="text-xs sm:text-sm md:text-base text-gray-400 mt-2 max-w-md mx-auto">
-          Adiviná la canción antes que nadie. Con tus amigos, en tiempo real.
+        <p className="text-sm sm:text-base text-gray-400 mt-2 max-w-md mx-auto">
+          Adiviná la canción antes que nadie.
         </p>
       </div>
 
-      {/* Main Card (Matches Screenshot 1) */}
-      <div className="glass-panel w-full max-w-md rounded-3xl p-5 sm:p-7 md:p-8 shadow-2xl relative z-10 border border-white/10">
+      {/* Main Card */}
+      <div className="glass-panel w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 border border-white/10">
         {error && (
           <div className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center">
             {error}
           </div>
         )}
 
-        {/* Quick User Avatar Preview */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${selectedAvatar.bg} flex items-center justify-center text-lg shadow-md`}
-            >
-              {selectedAvatar.emoji}
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Jugando como</p>
-              <p className="text-sm font-bold text-white">{name.trim() || "Anónimo"}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowProfileModal(true)}
-            className="text-xs text-fuchsia-400 hover:text-fuchsia-300 font-medium px-2.5 py-1 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 hover:bg-fuchsia-500/20 transition"
-          >
-            Editar perfil
-          </button>
-        </div>
-
         {/* Entrá con un código Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="text-lg font-bold text-white">Entrá con un código</h2>
-          <span className="text-xs text-gray-500 font-medium">Sala o torneo</span>
         </div>
 
         {/* Code Input Form */}
@@ -131,9 +105,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
         </form>
 
         {/* Divider */}
-        <div className="relative flex items-center justify-center my-6">
-          <div className="border-t border-white/10 w-full" />
-          <span className="bg-[#17151f] px-3 text-xs text-gray-500 font-mono">o</span>
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px bg-white/10 flex-1" />
+          <span className="text-xs text-gray-500 font-mono">o</span>
+          <div className="h-px bg-white/10 flex-1" />
         </div>
 
         {/* Create Room Button */}

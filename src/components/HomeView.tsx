@@ -13,35 +13,29 @@ interface HomeViewProps {
 export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loading, error }) => {
   const [code, setCode] = useState("");
   const [name, setName] = useState(localStorage.getItem("enuna_player_name") || "");
-  const [selectedAvatar, setSelectedAvatar] = useState<AvatarOption>(AVATARS[0]);
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarOption>(() => {
+    const savedId = localStorage.getItem("enuna_player_avatar");
+    return AVATARS.find((a) => a.id === savedId) || AVATARS[0];
+  });
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<"join" | "create" | null>(null);
 
   const handleJoinClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) return;
-    if (!name.trim()) {
-      setPendingAction("join");
-      setShowProfileModal(true);
-      return;
-    }
-    localStorage.setItem("enuna_player_name", name.trim());
-    onJoin(code.trim().toUpperCase(), name.trim(), selectedAvatar.id);
+    setPendingAction("join");
+    setShowProfileModal(true);
   };
 
   const handleCreateClick = () => {
-    if (!name.trim()) {
-      setPendingAction("create");
-      setShowProfileModal(true);
-      return;
-    }
-    localStorage.setItem("enuna_player_name", name.trim());
-    onCreateRoom(name.trim(), selectedAvatar.id);
+    setPendingAction("create");
+    setShowProfileModal(true);
   };
 
   const handleProfileConfirm = () => {
     if (!name.trim()) return;
     localStorage.setItem("enuna_player_name", name.trim());
+    localStorage.setItem("enuna_player_avatar", selectedAvatar.id);
     setShowProfileModal(false);
 
     if (pendingAction === "join" && code.trim()) {
@@ -50,6 +44,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
       onCreateRoom(name.trim(), selectedAvatar.id);
     }
   };
+
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden bg-[#0c0b10]">
@@ -126,10 +121,22 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="glass-panel w-full max-w-sm rounded-3xl p-6 border border-white/10 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-1">Tu perfil de juego</h3>
-            <p className="text-xs text-gray-400 mb-5">Elegí tu nombre y avatar para que te reconozcan en la sala.</p>
+            <h3 className="text-lg font-bold text-white mb-1">
+              {pendingAction === "create" ? "Perfil del Host" : "Tu perfil de juego"}
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">
+              {pendingAction === "create"
+                ? "Elegí el nombre y avatar que verán los jugadores en la sala."
+                : "Elegí tu nombre y avatar para que te reconozcan en la sala."}
+            </p>
 
-            <div className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleProfileConfirm();
+              }}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5 font-medium">Nombre o Apodo</label>
                 <div className="relative">
@@ -154,7 +161,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
                       key={av.id}
                       type="button"
                       onClick={() => setSelectedAvatar(av)}
-                      className={`h-12 rounded-xl bg-gradient-to-br ${av.bg} flex items-center justify-center text-xl transition transform hover:scale-105 ${
+                      className={`h-12 rounded-xl bg-gradient-to-br ${av.bg} flex items-center justify-center text-xl transition transform hover:scale-105 cursor-pointer ${
                         selectedAvatar.id === av.id
                           ? "ring-2 ring-white scale-105 shadow-lg shadow-fuchsia-500/30"
                           : "opacity-60 hover:opacity-100"
@@ -170,20 +177,19 @@ export const HomeView: React.FC<HomeViewProps> = ({ onJoin, onCreateRoom, loadin
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(false)}
-                  className="btn-secondary flex-1 py-2.5 rounded-xl text-sm font-medium"
+                  className="btn-secondary flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="button"
-                  onClick={handleProfileConfirm}
+                  type="submit"
                   disabled={!name.trim()}
-                  className="btn-primary flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"
+                  className="btn-primary flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 cursor-pointer"
                 >
-                  Listo
+                  {pendingAction === "create" ? "Continuar" : "Entrar"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

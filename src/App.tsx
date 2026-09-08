@@ -4,6 +4,7 @@ import {
   createGameRoom,
   joinGameRoom,
   reconnectGameRoom,
+  wakeUpBackend,
 } from "./services/colyseus";
 import type { Player, Track, PlaybackState, BuzzerState } from "./types/game";
 import { HomeView } from "./components/HomeView";
@@ -12,11 +13,13 @@ import { LobbyView } from "./components/LobbyView";
 import { HostGameView } from "./components/HostGameView";
 import { PlayerGameView } from "./components/PlayerGameView";
 import { PodiumView } from "./components/PodiumView";
+import { ConnectingModal } from "./components/ConnectingModal";
 
 export function App() {
   const [room, setRoom] = useState<Room<any> | null>(null);
   const [currentView, setCurrentView] = useState<"home" | "setup" | "lobby" | "game" | "podium">("home");
   const [loading, setLoading] = useState(false);
+  const [connectingAction, setConnectingAction] = useState<"create" | "join" | null>(null);
   const [error, setError] = useState("");
 
   // Host setup info
@@ -46,6 +49,11 @@ export function App() {
     penaltyOnFail: false,
     responseTimeLimit: 7,
   });
+
+  // Despertar el servidor de Render proactivamente apenas se abre la web
+  useEffect(() => {
+    wakeUpBackend();
+  }, []);
 
   // Intentar reconectar si hay token guardado
   useEffect(() => {
@@ -175,6 +183,7 @@ export function App() {
 
   // Crear sala
   const handleCreateRoom = async (name: string, avatar: string) => {
+    setConnectingAction("create");
     setLoading(true);
     setError("");
     try {
@@ -185,14 +194,19 @@ export function App() {
       setCurrentView("setup");
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "No se pudo crear la sala. Verificá que el servidor esté activo.");
+      setError(
+        err.message ||
+          "No se pudo crear la sala. Si el servidor estaba inactivo, aguardá unos segundos y reintentá."
+      );
     } finally {
       setLoading(false);
+      setConnectingAction(null);
     }
   };
 
   // Unirse a sala existente
   const handleJoinRoom = async (code: string, name: string, avatar: string) => {
+    setConnectingAction("join");
     setLoading(true);
     setError("");
     try {
@@ -203,6 +217,7 @@ export function App() {
       setError("No se encontró la sala o el código es inválido.");
     } finally {
       setLoading(false);
+      setConnectingAction(null);
     }
   };
 
@@ -285,6 +300,16 @@ export function App() {
 
   return (
     <main className="min-h-screen bg-[#0c0b10]">
+      {/* Modal de conexión / despertar Render */}
+      <ConnectingModal
+        isOpen={connectingAction !== null}
+        type={connectingAction || "create"}
+        onCancel={() => {
+          setConnectingAction(null);
+          setLoading(false);
+        }}
+      />
+
       {currentView === "home" && (
         <HomeView
           onJoin={handleJoinRoom}

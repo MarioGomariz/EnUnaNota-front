@@ -6,7 +6,7 @@ import {
   reconnectGameRoom,
   wakeUpBackend,
 } from "./services/colyseus";
-import type { Player, Track, PlaybackState, BuzzerState } from "./types/game";
+import type { Player, Track, PlaybackState, BuzzerState, BuzzerEntry, RoundTransitionState } from "./types/game";
 import { HomeView } from "./components/HomeView";
 import { PlaylistSetupView } from "./components/PlaylistSetupView";
 import { LobbyView } from "./components/LobbyView";
@@ -14,6 +14,7 @@ import { HostGameView } from "./components/HostGameView";
 import { PlayerGameView } from "./components/PlayerGameView";
 import { PodiumView } from "./components/PodiumView";
 import { ConnectingModal } from "./components/ConnectingModal";
+import { TransitionOverlay } from "./components/TransitionOverlay";
 
 export function App() {
   const [room, setRoom] = useState<Room<any> | null>(null);
@@ -44,10 +45,19 @@ export function App() {
     activePlayerName: "",
     timerExpiresAt: 0,
     status: "idle",
+    queue: [],
+  });
+  const [transition, setTransition] = useState<RoundTransitionState>({
+    isActive: false,
+    type: "none",
+    timerExpiresAt: 0,
+    revealedTitle: "",
+    revealedArtist: "",
+    revealedArtwork: "",
   });
   const [settings, setSettings] = useState<{ penaltyOnFail: boolean; responseTimeLimit: number }>({
     penaltyOnFail: false,
-    responseTimeLimit: 7,
+    responseTimeLimit: 15,
   });
 
   // Despertar el servidor de Render proactivamente apenas se abre la web
@@ -138,13 +148,38 @@ export function App() {
         });
       }
 
-      // Buzzer
+      // Buzzer con cola ordenada
       if (state.buzzer) {
+        const queueList: BuzzerEntry[] = [];
+        if (state.buzzer.queue) {
+          state.buzzer.queue.forEach((entry: any) => {
+            queueList.push({
+              playerId: entry.playerId || "",
+              playerName: entry.playerName || "",
+              playerAvatar: entry.playerAvatar || "avatar-1",
+              buzzedAt: Number(entry.buzzedAt || 0),
+            });
+          });
+        }
+
         setBuzzer({
           activePlayerId: state.buzzer.activePlayerId || "",
           activePlayerName: state.buzzer.activePlayerName || "",
           timerExpiresAt: Number(state.buzzer.timerExpiresAt || 0),
           status: state.buzzer.status || "idle",
+          queue: queueList,
+        });
+      }
+
+      // Transition (cuenta regresiva 5s inicio y revelación de canciones)
+      if (state.transition) {
+        setTransition({
+          isActive: Boolean(state.transition.isActive),
+          type: state.transition.type || "none",
+          timerExpiresAt: Number(state.transition.timerExpiresAt || 0),
+          revealedTitle: state.transition.revealedTitle || "",
+          revealedArtist: state.transition.revealedArtist || "",
+          revealedArtwork: state.transition.revealedArtwork || "",
         });
       }
 
@@ -152,7 +187,7 @@ export function App() {
       if (state.settings) {
         setSettings({
           penaltyOnFail: Boolean(state.settings.penaltyOnFail),
-          responseTimeLimit: Number(state.settings.responseTimeLimit || 7),
+          responseTimeLimit: Number(state.settings.responseTimeLimit || 15),
         });
       }
 
@@ -309,6 +344,10 @@ export function App() {
           setLoading(false);
         }}
       />
+
+      {/* Cuenta regresiva de inicio (5s) y revelación de canción entre pistas (5s) */}
+      <TransitionOverlay transition={transition} />
+
 
       {currentView === "home" && (
         <HomeView

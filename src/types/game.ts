@@ -26,11 +26,28 @@ export interface PlaybackState {
   mode: string; // 'normal' | 'repeat_1s'
 }
 
+export interface BuzzerEntry {
+  playerId: string;
+  playerName: string;
+  playerAvatar: string;
+  buzzedAt: number;
+}
+
 export interface BuzzerState {
   activePlayerId: string;
   activePlayerName: string;
   timerExpiresAt: number;
   status: string; // 'idle' | 'answering'
+  queue: BuzzerEntry[];
+}
+
+export interface RoundTransitionState {
+  isActive: boolean;
+  type: 'none' | 'game_start' | 'next_track';
+  timerExpiresAt: number;
+  revealedTitle: string;
+  revealedArtist: string;
+  revealedArtwork: string;
 }
 
 export interface RoomSettings {
@@ -47,5 +64,7 @@ export interface GameState {
   currentTrackIndex: number;
   playback: PlaybackState;
   buzzer: BuzzerState;
+  transition: RoundTransitionState;
   settings: RoomSettings;
 }
+

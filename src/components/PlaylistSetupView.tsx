@@ -46,7 +46,7 @@ export const PlaylistSetupView: React.FC<PlaylistSetupViewProps> = ({
 
   // Settings
   const [penaltyOnFail, setPenaltyOnFail] = useState(initialSettings?.penaltyOnFail ?? false);
-  const [responseTimeLimit, setResponseTimeLimit] = useState(initialSettings?.responseTimeLimit ?? 7);
+  const [responseTimeLimit, setResponseTimeLimit] = useState(initialSettings?.responseTimeLimit ?? 15);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
 
   const [sourceFilter, setSourceFilter] = useState<"all" | "itunes" | "deezer" | "audius">("all");
@@ -409,12 +409,12 @@ export const PlaylistSetupView: React.FC<PlaylistSetupViewProps> = ({
                     <select
                       value={responseTimeLimit}
                       onChange={(e) => setResponseTimeLimit(Number(e.target.value))}
-                      className="bg-[#191724] text-xs text-fuchsia-300 font-bold px-2 py-1 rounded-lg border border-white/10 focus:outline-none"
+                      className="bg-[#191724] text-xs text-fuchsia-300 font-bold px-2 py-1 rounded-lg border border-white/10 focus:outline-none cursor-pointer"
                     >
-                      <option value={5}>5 seg</option>
-                      <option value={7}>7 seg</option>
-                      <option value={10}>10 seg</option>
                       <option value={15}>15 seg</option>
+                      <option value={20}>20 seg</option>
+                      <option value={25}>25 seg</option>
+                      <option value={30}>30 seg</option>
                     </select>
                   </div>
                 </div>

@@ -62,8 +62,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
     }
   };
 
-  const maxSlots = 8;
-  const emptySlotsCount = Math.max(0, maxSlots - players.length);
+  const emptySlotsCount = Math.max(1, 4 - (players.length % 4 || 4));
 
   return (
     <div className="min-h-[100dvh] bg-[#0c0b10] text-[#f1f2f6] p-3.5 sm:p-6 md:p-8 flex flex-col justify-center items-center">
@@ -74,7 +73,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             ¡Tu sala está lista!
           </h1>
           <span className="text-xs text-fuchsia-400 font-medium px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20">
-            {players.length} de {maxSlots} jugadores
+            {players.length} {players.length === 1 ? "jugador conectado" : "jugadores conectados"}
           </span>
         </div>
 
@@ -185,7 +184,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-fuchsia-400" />
-                    <span>Jugadores ({players.length}/{maxSlots})</span>
+                    <span>Jugadores en la sala ({players.length})</span>
                   </h2>
                 </div>
 

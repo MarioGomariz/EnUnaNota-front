@@ -57,8 +57,13 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
   const totalTracks = playlist.length;
 
   const [seekValue, setSeekValue] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(() => {
+    const saved = localStorage.getItem("enuna_volume");
+    return saved !== null ? Number(saved) : 1;
+  });
+  const [isMuted, setIsMuted] = useState(() => {
+    return localStorage.getItem("enuna_is_muted") === "true";
+  });
   const [showLyricsModal, setShowLyricsModal] = useState(false);
   const [trackProgress, setTrackProgress] = useState(0);
 
@@ -67,7 +72,7 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Sincronizar audio con el estado de Colyseus
+  // Sincronizar audio con el estado de Colyseus y auto-reproducir
   useEffect(() => {
     if (!currentTrack?.previewUrl) return;
 
@@ -107,14 +112,31 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
     };
-  }, [playback.isPlaying, playback.mode, playback.timestamp, currentTrack?.previewUrl]);
+  }, [playback.isPlaying, playback.mode, playback.timestamp, currentTrack?.previewUrl, isMuted, volume]);
 
-  // Actualizar volumen local
+  // Actualizar volumen local y persistencia
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
+
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem("enuna_is_muted", String(next));
+      return next;
+    });
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setVolume(newVol);
+    localStorage.setItem("enuna_volume", String(newVol));
+    if (isMuted && newVol > 0) {
+      setIsMuted(false);
+      localStorage.setItem("enuna_is_muted", "false");
+    }
+  };
 
   // Countdown timer para el buzzer
   useEffect(() => {
@@ -131,6 +153,8 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
 
   const activePlayer = players.find((p) => p.id === buzzer.activePlayerId);
   const activeAvatar = activePlayer ? getAvatar(activePlayer.avatar) : null;
+  const queueEntries = buzzer.queue || [];
+
 
   return (
     <div className="min-h-[100dvh] bg-[#0c0b10] text-[#f1f2f6] flex flex-col justify-between p-3 sm:p-5 md:p-6 select-none">
@@ -158,7 +182,7 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
           {/* Volume Control */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={toggleMute}
               className="text-gray-400 hover:text-white transition cursor-pointer"
             >
               {isMuted || volume === 0 ? (
@@ -173,10 +197,7 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
               max="1"
               step="0.05"
               value={isMuted ? 0 : volume}
-              onChange={(e) => {
-                setVolume(Number(e.target.value));
-                setIsMuted(false);
-              }}
+              onChange={(e) => handleVolumeChange(Number(e.target.value))}
               className="w-16 sm:w-20 md:w-24 h-1 bg-white/10 rounded-lg cursor-pointer"
             />
           </div>
@@ -320,22 +341,56 @@ export const HostGameView: React.FC<HostGameViewProps> = ({
           {buzzer.status === "answering" && activePlayer ? (
             /* State 2: Player has buzzed -> Validate answer (Matches Screenshot 5) */
             <div className="space-y-4 animate-in fade-in duration-200">
-              {/* Top: Orden para responder */}
+              {/* Top: Orden para responder con cola completa */}
               <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-purple-500/30 shadow-xl text-center space-y-3">
-                <span className="text-xs font-bold text-fuchsia-400 uppercase tracking-wider">
-                  Orden para responder
-                </span>
-                <div className="flex justify-center">
-                  <div className="p-3 sm:p-3.5 rounded-2xl bg-[#1c192c] border border-fuchsia-500/40 flex flex-col items-center justify-center min-w-[100px] shadow-lg shadow-fuchsia-500/20">
-                    <div
-                      className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${activeAvatar?.bg} flex items-center justify-center text-xl mb-1`}
-                    >
-                      {activeAvatar?.emoji}
-                    </div>
-                    <span className="text-[10px] font-bold text-fuchsia-400">1°</span>
-                    <span className="text-xs font-bold text-white truncate max-w-[110px]">{activePlayer.name}</span>
-                  </div>
+                <div className="flex items-center justify-between px-2">
+                  <span className="text-xs font-bold text-fuchsia-400 uppercase tracking-wider">
+                    Orden para responder {queueEntries.length > 1 && `(${queueEntries.length} en cola)`}
+                  </span>
                 </div>
+                <div className="flex items-center justify-center gap-3 overflow-x-auto py-1">
+                  {queueEntries.length > 0 ? (
+                    queueEntries.map((entry, index) => {
+                      const av = getAvatar(entry.playerAvatar);
+                      const isFirst = index === 0;
+                      return (
+                        <div
+                          key={`${entry.playerId}-${index}`}
+                          className={`p-3 rounded-2xl border flex flex-col items-center justify-center min-w-[95px] transition ${
+                            isFirst
+                              ? "bg-[#1c192c] border-fuchsia-500/60 shadow-lg shadow-fuchsia-500/30 ring-2 ring-fuchsia-500/30"
+                              : "bg-[#14121f] border-white/10 opacity-75"
+                          }`}
+                        >
+                          <div
+                            className={`w-10 h-10 rounded-xl bg-gradient-to-br ${av.bg} flex items-center justify-center text-lg mb-1`}
+                          >
+                            {av.emoji}
+                          </div>
+                          <span className={`text-[10px] font-black ${isFirst ? "text-fuchsia-400" : "text-gray-400"}`}>
+                            {index + 1}° {isFirst && "— Turno"}
+                          </span>
+                          <span className="text-xs font-bold text-white truncate max-w-[90px]">{entry.playerName}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 sm:p-3.5 rounded-2xl bg-[#1c192c] border border-fuchsia-500/40 flex flex-col items-center justify-center min-w-[100px] shadow-lg shadow-fuchsia-500/20">
+                      <div
+                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${activeAvatar?.bg} flex items-center justify-center text-xl mb-1`}
+                      >
+                        {activeAvatar?.emoji}
+                      </div>
+                      <span className="text-[10px] font-bold text-fuchsia-400">1° — Turno</span>
+                      <span className="text-xs font-bold text-white truncate max-w-[110px]">{activePlayer.name}</span>
+                    </div>
+                  )}
+                </div>
+                {queueEntries.length > 1 && (
+                  <p className="text-[11px] text-gray-400">
+                    Si marcás "No válida", el turno pasará automáticamente a <strong className="text-white">{queueEntries[1].playerName} (2°)</strong>.
+                  </p>
+                )}
               </div>
 
               {/* Bottom: Turn action with Timer and Valid/Invalid Buttons */}

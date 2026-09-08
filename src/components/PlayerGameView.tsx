@@ -34,17 +34,24 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
   mySessionId,
   onPressBuzzer,
 }) => {
-  const [isLocalMuted, setIsLocalMuted] = useState(false);
+  const [isLocalMuted, setIsLocalMuted] = useState(() => {
+    return localStorage.getItem("enuna_is_muted") === "true";
+  });
   const [timeLeft, setTimeLeft] = useState(0);
 
   const me = players.find((p) => p.id === mySessionId);
+  const queueEntries = buzzer.queue || [];
+  const myQueueIndex = queueEntries.findIndex((e) => e.playerId === mySessionId);
   const isLockedOut = me?.isLockedOut || false;
-  const isMyTurn = buzzer.status === "answering" && buzzer.activePlayerId === mySessionId;
-  const isSomeoneElseTurn = buzzer.status === "answering" && !isMyTurn;
+
+  const isMyTurn = myQueueIndex === 0 && buzzer.status === "answering";
+  const isInQueueWaiting = myQueueIndex > 0;
+  const isSomeoneElseTurn = buzzer.status === "answering" && !isMyTurn && !isInQueueWaiting;
+  const canPressBuzzer = !isLockedOut && myQueueIndex === -1;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Sincronizar audio en el navegador del jugador
+  // Sincronizar audio en el navegador del jugador y auto-play
   useEffect(() => {
     if (!currentTrack?.previewUrl) return;
 
@@ -83,17 +90,25 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
     };
   }, [playback.isPlaying, playback.mode, playback.timestamp, currentTrack?.previewUrl, isLocalMuted]);
 
-  // Actualizar volumen local
+  // Actualizar volumen local y persistencia
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isLocalMuted ? 0 : 1;
     }
   }, [isLocalMuted]);
 
+  const toggleLocalMute = () => {
+    setIsLocalMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem("enuna_is_muted", String(next));
+      return next;
+    });
+  };
+
   // Escuchar tecla Espacio para presionar el buzzer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !isLockedOut && buzzer.status === "idle") {
+      if (e.code === "Space" && canPressBuzzer) {
         e.preventDefault();
         onPressBuzzer();
       }
@@ -101,7 +116,7 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLockedOut, buzzer.status, onPressBuzzer]);
+  }, [canPressBuzzer, onPressBuzzer]);
 
   // Countdown timer
   useEffect(() => {
@@ -139,7 +154,7 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsLocalMuted(!isLocalMuted)}
+            onClick={toggleLocalMute}
             className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               isLocalMuted
                 ? "bg-red-500/20 border-red-500/40 text-red-400"
@@ -162,7 +177,7 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
           {isMyTurn ? (
             <div className="space-y-2 animate-in zoom-in duration-200">
               <span className="inline-flex items-center gap-2 px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs sm:text-sm font-black uppercase tracking-wider">
-                <Sparkles className="w-4 h-4" /> ¡TENÉS EL TURNO!
+                <Sparkles className="w-4 h-4" /> ¡TENÉS EL TURNO (1°)!
               </span>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white">
                 {timeLeft > 0 ? "¡Cantá o decí el nombre!" : "¡Tiempo cumplido!"}
@@ -174,11 +189,29 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
                 </span>
               </div>
             </div>
+          ) : isInQueueWaiting ? (
+            <div className="space-y-2 sm:space-y-3 animate-in zoom-in duration-200">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs sm:text-sm font-black uppercase tracking-wider">
+                ⏳ ¡Anotado en la fila!
+              </span>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white">
+                Estás <span className="text-fuchsia-400">{myQueueIndex + 1}°</span> en la fila
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-300">
+                {activePlayer ? (
+                  <>
+                    <strong className="text-white">{activePlayer.name}</strong> está respondiendo ahora. Si falla, ¡el turno pasará a vos!
+                  </>
+                ) : (
+                  "Aguardando que termine el turno actual..."
+                )}
+              </p>
+            </div>
           ) : isSomeoneElseTurn ? (
             <div className="space-y-2 sm:space-y-3 animate-in fade-in">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold">
                 <Radio className="w-3.5 h-3.5 animate-pulse text-fuchsia-400" />
-                {timeLeft > 0 ? "Respondiendo..." : "Tiempo cumplido"}
+                {timeLeft > 0 ? `${activePlayer?.name} respondiendo... (${timeLeft}s)` : "Tiempo cumplido"}
               </div>
               <div className="flex items-center justify-center gap-2.5 sm:gap-3">
                 <div
@@ -187,11 +220,11 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
                   {activeAvatar?.emoji}
                 </div>
                 <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white truncate max-w-[200px]">
-                  {activePlayer?.name} tiene el turno
+                  {activePlayer?.name} (1°)
                 </h2>
               </div>
-              <p className="text-xs text-gray-400">
-                {timeLeft > 0 ? "El Host está escuchando la respuesta..." : "El Host está decidiendo si darle el punto..."}
+              <p className="text-xs text-fuchsia-300 font-semibold">
+                ¿Te la sabés? ¡Tocá "¡YO!" para anotarte {queueEntries.length + 1}° en la fila!
               </p>
             </div>
           ) : isLockedOut ? (
@@ -217,22 +250,40 @@ export const PlayerGameView: React.FC<PlayerGameViewProps> = ({
         {/* Big Buzzer Button */}
         <button
           type="button"
-          disabled={isLockedOut || buzzer.status === "answering"}
+          disabled={!canPressBuzzer}
           onClick={onPressBuzzer}
           className={`w-48 h-48 xs:w-56 xs:h-56 sm:w-60 sm:h-60 md:w-64 md:h-64 rounded-full flex flex-col items-center justify-center transition transform select-none cursor-pointer border-4 touch-manipulation ${
             isMyTurn
               ? "bg-emerald-500 border-emerald-300 text-white shadow-2xl shadow-emerald-500/50 scale-105"
-              : isSomeoneElseTurn || isLockedOut
+              : isInQueueWaiting
+              ? "bg-[#251b3d] border-fuchsia-500/60 text-fuchsia-300 shadow-xl shadow-fuchsia-950/40 cursor-default"
+              : isLockedOut
               ? "bg-[#181622] border-white/5 text-gray-600 opacity-50 cursor-not-allowed"
               : "btn-primary border-white/20 animate-buzzer hover:scale-105 active:scale-95"
           }`}
         >
-          <span className="text-4xl xs:text-5xl font-black tracking-tight drop-shadow-md">
-            {isMyTurn ? "¡TUYO!" : isLockedOut ? "✕" : "¡YO!"}
+          <span className="text-3xl xs:text-4xl sm:text-5xl font-black tracking-tight drop-shadow-md">
+            {isMyTurn
+              ? "¡TUYO!"
+              : isInQueueWaiting
+              ? `¡EN FILA (${myQueueIndex + 1}°)!`
+              : isLockedOut
+              ? "✕"
+              : "¡YO!"}
           </span>
           <div className="flex items-center gap-1 mt-2 text-[11px] font-semibold opacity-90">
-            <Keyboard className="w-3.5 h-3.5" />
-            <span>Tocar o Espacio</span>
+            {canPressBuzzer ? (
+              <>
+                <Keyboard className="w-3.5 h-3.5" />
+                <span>Tocar o Espacio</span>
+              </>
+            ) : isInQueueWaiting ? (
+              <span>Posición #{myQueueIndex + 1}</span>
+            ) : isMyTurn ? (
+              <span>¡Decí tu respuesta!</span>
+            ) : (
+              <span>Esperando ronda</span>
+            )}
           </div>
         </button>
       </div>

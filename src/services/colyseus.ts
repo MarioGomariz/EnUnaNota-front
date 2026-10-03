@@ -29,14 +29,19 @@ export const getHttpBackendUrl = () => {
 
 export const colyseusClient = new Client(getBackendUrl());
 
-// Pinging proactivo para despertar la instancia de Render apenas carga la web
+// Pinging proactivo para despertar y mantener activa la instancia de Render
 export function wakeUpBackend() {
   try {
     const httpUrl = getHttpBackendUrl();
-    fetch(`${httpUrl}/health`, { mode: "no-cors" }).catch(() => {});
+    fetch(`${httpUrl}/health`, { mode: "no-cors", signal: AbortSignal.timeout(5000) }).catch(() => {});
   } catch {
     // Silencioso
   }
+}
+
+// Keep-alive cada 3 minutos para evitar que Render free tier se duerma en mitad de una partida
+if (typeof window !== "undefined") {
+  setInterval(wakeUpBackend, 3 * 60 * 1000);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

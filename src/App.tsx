@@ -201,13 +201,41 @@ export function App() {
       }
     });
 
-    newRoom.onLeave((code) => {
+    newRoom.onLeave(async (code) => {
+      // 4001: Expulsado voluntariamente por el host
+      if (code === 4001) {
+        sessionStorage.removeItem("enuna_reconnection_token");
+        setRoom(null);
+        setCurrentView("home");
+        setError("Fuiste expulsado de la sala por el Host.");
+        return;
+      }
+
+      // 1000: Cierre limpio / salida intencional
+      if (code === 1000) {
+        sessionStorage.removeItem("enuna_reconnection_token");
+        setRoom(null);
+        setCurrentView("home");
+        return;
+      }
+
+      // Desconexión accidental o por red/proxy (ej. timeout Cloudflare, sleep en móvil)
+      const token = sessionStorage.getItem("enuna_reconnection_token");
+      if (token) {
+        console.warn(`[Colyseus] Desconexión de sala (${code}). Intentando reconexión automática...`);
+        try {
+          const reconnectedRoom = await reconnectGameRoom(token);
+          bindRoom(reconnectedRoom);
+          return;
+        } catch (reconnectErr) {
+          console.warn("[Colyseus] Intento de reconexión falló:", reconnectErr);
+        }
+      }
+
       sessionStorage.removeItem("enuna_reconnection_token");
       setRoom(null);
       setCurrentView("home");
-      if (code === 4001) {
-        setError("Fuiste expulsado de la sala por el Host.");
-      }
+      setError("Se interrumpió la conexión con la partida.");
     });
 
     newRoom.onError((code, message) => {
